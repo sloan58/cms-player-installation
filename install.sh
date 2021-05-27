@@ -14,7 +14,7 @@ echo "America/New_York" > /etc/timezone
 dpkg-reconfigure -f noninteractive tzdata
 
 echo "Enabling Ubuntu Firewall. Allowing SSH, HTTP and HTTPS" > $(tty)
-ufw enable
+ufw enable -y
 ufw allow 22
 ufw allow 80
 ufw allow 443
@@ -24,10 +24,10 @@ apt-get update && apt-get upgrade -y
 
 echo "Installing system and application dependencies" > $(tty)
 apt-get install -y php7.4 php7.4-cli php7.4-common php7.4-json \
-                   php7.4-opcache php7.4-mysql php7.4-mbstring \
-                   php7.4-zip php7.4-fpm php7.4-xml php7.4-ldap \
-                   redis-server mysql-server mysql-client nginx \
-                   git curl nano
+                php7.4-opcache php7.4-mysql php7.4-mbstring \
+                php7.4-zip php7.4-fpm php7.4-xml php7.4-ldap \
+                redis-server mysql-server mysql-client nginx \
+                git curl nano
 
 
 echo "Starting php fpm" > $(tty)
@@ -72,6 +72,13 @@ rm /etc/nginx/sites-available/default
 cat $(pwd)/nginx.config > /etc/nginx/sites-available/cmsplayer.conf
 ln -s /etc/nginx/sites-available/cmsplayer.conf /etc/nginx/sites-enabled/cmsplayer.conf
 
+echo "Generating nginx SSL certificate" > $(tty)
+openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
+    -subj "/C=US/ST=PA/L=Pittsburgh/O=HQ/CN=localhost" \
+    -keyout localhost.key  -out localhost.crt
+mv localhost.crt /etc/ssl/certs/localhost.crt
+mv localhost.key /etc/ssl/private/localhost.key
+
 echo "Starting nginx service" > $(tty)
 service nginx start
 
@@ -82,7 +89,7 @@ git clone https://github.com/sloan58/cmsrec.git ${APP_DIR}
 
 echo "Installing application dependencies" > $(tty)
 cd ${APP_DIR}
-composer install
+composer install --no-interaction --prefer-dist --optimize-autoloader
 
 echo "Configuring app environment" > $(tty)
 export MOUNT_PATH=`which mount`
@@ -105,5 +112,10 @@ chown -R www-data: ${APP_DIR}
 echo $reset > $(tty)
 echo "Installation Complete! Please find your application/server details below:" > $(tty)
 echo "----------" > $(tty)
-echo "MySQL root password: ${MYSQL_PWD}" > $(tty)
-echo $reset > $(tty)
+echo "MySQL Username: root" > $(tty)
+echo "MySQL Password: ${MYSQL_PWD}" > $(tty)
+echo -e "\n" > $(tty)
+echo "Application Username: admin@cmsplayer.com" > $(tty)
+echo "Application Password: secret" > $(tty)
+echo "* You can change this password after logging in here: http://127.0.0.1:8005" > $(tty)
+echo -e "\n" > $(tty)
